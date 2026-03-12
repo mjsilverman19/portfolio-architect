@@ -61,6 +61,7 @@ function simYear(st, env) {
     else if (a.jCurve && st.year === 2) j = 0.96;
     if (a.id === "pe" && st.penaltyPe) j *= 0.95;
     if (a.id === "pc" && st.distressedBonus && st.year >= 3 && st.year <= 6) j *= 1.08;
+    if (a.income && st.deferralPenalty && st.year >= 9) j *= 0.85;
     v = Math.max(0, v * mult * j);
     if (a.income) yearInc += v * a.incomeRate * rnd(0.8, 1.1);
     newAlloc[a.id] = v;
@@ -69,19 +70,21 @@ function simYear(st, env) {
 }
 
 function buildDecision(st) {
+  /* Y2: Capital Call */
   if (st.year === 2 && st.alloc.pe > 0) {
     const cost = Math.round(st.alloc.pe * 0.15);
     return {
       title: "Capital Call",
       body: `Your private equity fund manager is requesting ${fmt(cost)} in additional capital for a new round of investments. Funding this maintains your commitment to the fund and increases your PE exposure. Declining means forfeiting this allocation.`,
       options: [
-        { id:"fund", label:"Fund the Call", disabled: st.cash < cost, apply: (s) => ({...s, cash:s.cash-cost, alloc:{...s.alloc, pe:s.alloc.pe+cost}, decisions:[...s.decisions, `Funded PE capital call (${fmt(cost)}) Y2`]}) },
-        { id:"decline", label:"Decline", disabled:false, apply: (s) => ({...s, penaltyPe:true, decisions:[...s.decisions,"Declined PE capital call Y2"]}) },
+        { id:"fund", label:"Fund the Call", disabled: st.cash < cost, apply: (s) => ({...s, cash:s.cash-cost, alloc:{...s.alloc, pe:s.alloc.pe+cost}, capitalCallFunded:true, decisions:[...s.decisions, `Funded PE capital call (${fmt(cost)}) Y2`]}) },
+        { id:"decline", label:"Decline", disabled:false, apply: (s) => ({...s, penaltyPe:true, capitalCallFunded:false, decisions:[...s.decisions,"Declined PE capital call Y2"]}) },
       ],
       lowCashNote: st.cash < cost ? `This call requires ${fmt(cost)}. Your current cash reserves are ${fmt(st.cash)}.` : null,
     };
   }
-  if (st.year === 3) {
+  /* Y3: Branched — funded path gets distressed opportunity, declined path gets co-invest */
+  if (st.year === 3 && st.capitalCallFunded === true) {
     return {
       title: "Distressed Investment Opportunity",
       body: `A credit fund is offering access to loans purchased at a steep discount during the current market downturn. The minimum investment is $75K. Discounted purchases can produce strong returns as markets recover, but deploying cash now reduces your reserves at a volatile point in the cycle.`,
@@ -94,32 +97,105 @@ function buildDecision(st) {
       lowCashNote: st.cash < 75000 ? `This opportunity requires $75K. Your current reserves are ${fmt(st.cash)}.` : null,
     };
   }
+  if (st.year === 3 && st.capitalCallFunded === false) {
+    return {
+      title: "Co-Investment Opportunity",
+      body: `Your PE fund manager, despite the declined capital call, is offering a smaller co-investment in a direct deal. The minimum is $50K. This bypasses the fund structure and its fees, giving you direct exposure to a single company at a lower cost basis.`,
+      options: st.cash >= 50000 ? [
+        { id:"coinvest", label:"Invest $50K", disabled:false, apply: (s) => ({...s, cash:s.cash-50000, alloc:{...s.alloc, pe:s.alloc.pe+50000}, decisions:[...s.decisions,"Co-invested $50K directly into PE deal Y3"]}) },
+        { id:"decline", label:"Decline", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Declined co-investment opportunity Y3"]}) },
+      ] : [
+        { id:"cant", label:"Decline \u2014 Insufficient Cash", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Had no reserves for co-investment Y3"]}) },
+      ],
+      lowCashNote: st.cash < 50000 ? `This opportunity requires $50K. Your current reserves are ${fmt(st.cash)}.` : null,
+    };
+  }
+  if (st.year === 3 && st.capitalCallFunded === null) {
+    /* Fallback: no PE allocated, capital call was skipped — show distressed opportunity */
+    return {
+      title: "Distressed Investment Opportunity",
+      body: `A credit fund is offering access to loans purchased at a steep discount during the current market downturn. The minimum investment is $75K. Discounted purchases can produce strong returns as markets recover, but deploying cash now reduces your reserves at a volatile point in the cycle.`,
+      options: st.cash >= 75000 ? [
+        { id:"deploy", label:"Invest $75K", disabled:false, apply: (s) => ({...s, cash:s.cash-75000, alloc:{...s.alloc, pc:s.alloc.pc+75000}, distressedBonus:true, decisions:[...s.decisions,"Invested $75K into distressed credit Y3"]}) },
+        { id:"hold", label:"Pass", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Passed on distressed opportunity Y3"]}) },
+      ] : [
+        { id:"cant", label:"Pass \u2014 Insufficient Cash", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Had no reserves for distressed opportunity Y3"]}) },
+      ],
+      lowCashNote: st.cash < 75000 ? `This opportunity requires $75K. Your current reserves are ${fmt(st.cash)}.` : null,
+    };
+  }
+  /* Y5: Early Exit Offer */
   if (st.year === 5 && (st.alloc.vc > 0 || st.alloc.pe > 0)) {
     const target = st.alloc.vc > 0 ? "vc" : "pe";
     const tName = target === "vc" ? "Venture Capital" : "Private Equity";
     const disc = target === "vc" ? 0.75 : 0.80;
     const proceeds = Math.round(st.alloc[target] * disc);
-    const haircut = Math.round(st.alloc[target] * (1 - disc));
     return {
       title: "Early Exit Offer",
       body: `A buyer has offered to purchase your ${tName} position at ${fmt(proceeds)}, representing a ${Math.round((1-disc)*100)}% discount to its current estimated value. Selling provides immediate liquidity. Holding maintains exposure to an asset class approaching its primary value-creation period.`,
       options: [
-        { id:"sell", label:`Sell for ${fmt(proceeds)}`, disabled:false, apply: (s) => ({...s, cash:s.cash+proceeds, alloc:{...s.alloc,[target]:0}, decisions:[...s.decisions, `Sold ${target.toUpperCase()} on secondary for ${fmt(proceeds)} Y5`]}) },
-        { id:"hold", label:"Hold", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions, `Held ${target.toUpperCase()} through Y5`]}) },
+        { id:"sell", label:`Sell for ${fmt(proceeds)}`, disabled:false, apply: (s) => ({...s, cash:s.cash+proceeds, alloc:{...s.alloc,[target]:0}, earlyExitSold:true, decisions:[...s.decisions, `Sold ${target.toUpperCase()} on secondary for ${fmt(proceeds)} Y5`]}) },
+        { id:"hold", label:"Hold", disabled:false, apply: (s) => ({...s, earlyExitSold:false, decisions:[...s.decisions, `Held ${target.toUpperCase()} through Y5`]}) },
       ],
     };
   }
+  /* Y6: Redeploy Proceeds — only if sold at Y5 */
+  if (st.year === 6 && st.earlyExitSold === true) {
+    const redeployAmt = Math.round(st.cash * 0.6);
+    const total = Object.values(st.alloc).reduce((a,b)=>a+b,0);
+    const sorted = total > 0 ? ASSETS.map(a=>({...a, val:st.alloc[a.id], p:st.alloc[a.id]/total})).sort((a,b)=>a.p-b.p) : ASSETS.map(a=>({...a, val:0, p:0}));
+    const target = sorted[0];
+    return {
+      title: "Redeploy Sale Proceeds",
+      body: `You have ${fmt(st.cash)} in cash from the secondary sale. You can redeploy ${fmt(redeployAmt)} into ${target.name}, your smallest position, or hold it as reserves heading into the second half of the simulation.`,
+      options: redeployAmt > 0 ? [
+        { id:"redeploy", label:`Redeploy ${fmt(redeployAmt)} into ${target.short}`, disabled:false, apply: (s) => ({...s, cash:s.cash-redeployAmt, alloc:{...s.alloc,[target.id]:s.alloc[target.id]+redeployAmt}, decisions:[...s.decisions, `Redeployed ${fmt(redeployAmt)} into ${target.short} Y6`]}) },
+        { id:"hold", label:"Hold as Cash", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Held sale proceeds as cash Y6"]}) },
+      ] : [
+        { id:"hold", label:"Hold as Cash", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Held sale proceeds as cash Y6"]}) },
+      ],
+    };
+  }
+  /* Y7: Income Reinvestment */
   if (st.year === 7 && st.totalIncome > 5000) {
     const inc = Math.round(st.totalIncome);
     return {
       title: "Income Reinvestment",
       body: `You have received ${fmt(inc)} in income payments from your credit and real asset holdings. You can reinvest this amount to grow your portfolio, or take it as cash to strengthen your reserves.`,
       options: [
-        { id:"reinvest", label:"Reinvest", disabled:false, apply: (s) => { const half=Math.round(s.totalIncome/2); return {...s, alloc:{...s.alloc, pc:s.alloc.pc+half, infra:s.alloc.infra+(s.totalIncome-half)}, totalIncome:0, decisions:[...s.decisions, `Reinvested ${fmt(inc)} in distributions Y7`]}; }},
-        { id:"cash", label:"Take Cash", disabled:false, apply: (s) => ({...s, cash:s.cash+s.totalIncome, totalIncome:0, decisions:[...s.decisions, `Took ${fmt(inc)} distributions as cash Y7`]}) },
+        { id:"reinvest", label:"Reinvest", disabled:false, apply: (s) => { const half=Math.round(s.totalIncome/2); return {...s, alloc:{...s.alloc, pc:s.alloc.pc+half, infra:s.alloc.infra+(s.totalIncome-half)}, totalIncome:0, incomeReinvested:true, decisions:[...s.decisions, `Reinvested ${fmt(inc)} in distributions Y7`]}; }},
+        { id:"cash", label:"Take Cash", disabled:false, apply: (s) => ({...s, cash:s.cash+s.totalIncome, totalIncome:0, incomeReinvested:false, decisions:[...s.decisions, `Took ${fmt(inc)} distributions as cash Y7`]}) },
       ],
     };
   }
+  /* Y8: Branched — reinvested path gets liquidity crunch, cash path gets new fund opportunity */
+  if (st.year === 8 && st.incomeReinvested === true) {
+    const sorted = ASSETS.map(a=>({...a, val:st.alloc[a.id]})).filter(a=>a.val>0).sort((a,b)=>a.val-b.val);
+    const sellTarget = sorted[0] || ASSETS[0];
+    const sellProceeds = Math.round(sellTarget.val * 0.80);
+    return {
+      title: "Liquidity Crunch",
+      body: `A capital commitment is coming due and your portfolio is heavily invested with limited reserves. You reinvested your income, leaving little liquidity. You can sell your ${sellTarget.name} position on the secondary market at a 20% discount to raise ${fmt(sellProceeds)}, or request a deferral from the fund manager, which may reduce your priority in future distributions.`,
+      options: [
+        { id:"sell", label:`Sell ${sellTarget.short} for ${fmt(sellProceeds)}`, disabled:false, apply: (s) => ({...s, cash:s.cash+sellProceeds, alloc:{...s.alloc,[sellTarget.id]:0}, decisions:[...s.decisions, `Sold ${sellTarget.short} at 20% discount for ${fmt(sellProceeds)} Y8`]}) },
+        { id:"defer", label:"Request Deferral", disabled:false, apply: (s) => ({...s, deferralPenalty:true, decisions:[...s.decisions,"Requested deferral \u2014 reduced distribution priority Y8"]}) },
+      ],
+    };
+  }
+  if (st.year === 8 && st.incomeReinvested === false) {
+    return {
+      title: "New Fund Opportunity",
+      body: `A top-quartile fund is raising its next vintage with favorable terms for early commitments. With ${fmt(st.cash)} in reserves, you have the option to commit $60K. This deploys cash into a new position but reduces your remaining liquidity.`,
+      options: st.cash >= 60000 ? [
+        { id:"commit", label:"Commit $60K", disabled:false, apply: (s) => { const target = s.alloc.pe <= s.alloc.vc ? "pe" : "vc"; return {...s, cash:s.cash-60000, alloc:{...s.alloc,[target]:s.alloc[target]+60000}, decisions:[...s.decisions, `Committed $60K to new ${target.toUpperCase()} fund Y8`]}; }},
+        { id:"pass", label:"Pass", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Passed on new fund opportunity Y8"]}) },
+      ] : [
+        { id:"cant", label:"Pass \u2014 Insufficient Cash", disabled:false, apply: (s) => ({...s, decisions:[...s.decisions,"Had insufficient cash for new fund Y8"]}) },
+      ],
+      lowCashNote: st.cash < 60000 ? `This commitment requires $60K. Your current reserves are ${fmt(st.cash)}.` : null,
+    };
+  }
+  /* Y9: Portfolio Concentration (unchanged, all paths reconverge) */
   if (st.year === 9) {
     const total = Object.values(st.alloc).reduce((a,b)=>a+b,0);
     if (total <= 0) return null;
@@ -138,6 +214,18 @@ function buildDecision(st) {
     };
   }
   return null;
+}
+
+function buildNarrative(st) {
+  const parts = [];
+  if (st.capitalCallFunded === true) parts.push("funded the capital call");
+  else if (st.capitalCallFunded === false) parts.push("declined the capital call");
+  if (st.earlyExitSold === true) parts.push("sold early for liquidity");
+  else if (st.earlyExitSold === false) parts.push("held through the exit offer");
+  if (st.incomeReinvested === true) parts.push("reinvested income for growth");
+  else if (st.incomeReinvested === false) parts.push("took cash for flexibility");
+  if (parts.length === 0) return null;
+  return `You ${parts.join(", ")}.`;
 }
 
 function advanceUntilDecision(initState) {
@@ -343,6 +431,7 @@ export default function App() {
       year:0, alloc:{...alloc}, cash:Math.max(0,reserve), totalIncome:0, envs,
       history:[{year:0,alloc:{...alloc},cash:Math.max(0,reserve),totalPortfolio:500000,env:null}],
       decisions:[], penaltyPe:false, distressedBonus:false,
+      capitalCallFunded:null, earlyExitSold:null, incomeReinvested:null, deferralPenalty:false,
     };
     runAdvance(init);
   }
@@ -562,6 +651,7 @@ export default function App() {
           </div>
           <div style={{fontSize:16,color:B.white,fontWeight:500}}>Score: {score.overall}/100</div>
           <div style={{fontSize:13,color:B.ltTeal,marginTop:4}}>{fmt(500000)} over 10 simulated years</div>
+          {buildNarrative(gs)&&<div style={{fontSize:13,color:B.ltTeal,marginTop:10,maxWidth:440,margin:"10px auto 0",lineHeight:1.5,fontStyle:"italic"}}>{buildNarrative(gs)}</div>}
         </div>
         <div style={{maxWidth:640,margin:"0 auto",padding:"28px 24px"}}>
           <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
