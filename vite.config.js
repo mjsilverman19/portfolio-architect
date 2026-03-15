@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: "/portfolio-architect/",
   server: {
-    port: 5173,
+    port: parseInt(process.env.PORT) || 5173,
   },
 });
