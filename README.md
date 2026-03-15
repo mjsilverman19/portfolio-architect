@@ -1,6 +1,6 @@
 # Portfolio Architect
 
-An educational portfolio-building simulation by [Willow Wealth](https://www.willowwealth.com). Players allocate $500K across four private markets asset classes — Private Equity, Real Estate, Private Credit, and Venture Capital — then navigate 10 simulated years of market conditions and branching decisions.
+An educational portfolio-building simulation. Players allocate $500K across four private markets asset classes — Private Equity, Real Estate, Private Credit, and Venture Capital — then navigate 10 simulated years of market conditions and branching decisions.
 
 ## Getting Started
 
