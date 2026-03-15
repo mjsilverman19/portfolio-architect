@@ -155,7 +155,7 @@ function buildDecision(st) {
           { id:"invest", label:`Invest ${fmt(minInvest)}`, disabled:false, apply: s => {
             const newPos = {...s.positions};
             newPos[target.id+"_sat"] = (newPos[target.id+"_sat"]||0) + minInvest;
-            return {...s, cash:s.cash-minInvest, positions:newPos, firstSatellite:target.id, decisions:[...s.decisions, `Invested ${fmt(minInvest)} in ${target.name} direct deal (Y3)`]};
+            return {...s, cash:s.cash-minInvest, positions:newPos, firstSatellite:target.id, satelliteDeployed:(s.satelliteDeployed||0)+minInvest, decisions:[...s.decisions, `Invested ${fmt(minInvest)} in ${target.name} direct deal (Y3)`]};
           }},
           { id:"pass", label:"Stay in Diversified Funds", disabled:false, apply: s => ({...s, firstSatellite:null, decisions:[...s.decisions, "Stayed in diversified funds (Y3)"]}) },
         ] : [
@@ -174,7 +174,7 @@ function buildDecision(st) {
           apply: s => {
             const newPos = {...s.positions};
             newPos[cls.id+"_sat"] = (newPos[cls.id+"_sat"]||0) + minInvest;
-            return {...s, cash:s.cash-minInvest, positions:newPos, firstSatellite:cls.id, decisions:[...s.decisions, `Invested ${fmt(minInvest)} in ${cls.name} direct deal (Y3)`]};
+            return {...s, cash:s.cash-minInvest, positions:newPos, firstSatellite:cls.id, satelliteDeployed:(s.satelliteDeployed||0)+minInvest, decisions:[...s.decisions, `Invested ${fmt(minInvest)} in ${cls.name} direct deal (Y3)`]};
           }
         })),
         { id:"pass", label:"Stay Diversified", disabled:false, apply: s => ({...s, firstSatellite:null, decisions:[...s.decisions, "Stayed in diversified funds (Y3)"]}) },
@@ -196,7 +196,7 @@ function buildDecision(st) {
         { id:"coinvest", label:`Co-invest ${fmt(cost)}`, disabled:false, apply: s => {
           const newPos = {...s.positions};
           newPos[target.id+"_sat"] = (newPos[target.id+"_sat"]||0) + cost;
-          return {...s, cash:s.cash-cost, positions:newPos, decisions:[...s.decisions, `Co-invested ${fmt(cost)} in ${target.name} deal (Y4)`]};
+          return {...s, cash:s.cash-cost, positions:newPos, satelliteDeployed:(s.satelliteDeployed||0)+cost, decisions:[...s.decisions, `Co-invested ${fmt(cost)} in ${target.name} deal (Y4)`]};
         }},
         { id:"pass", label:"Decline", disabled:false, apply: s => ({...s, decisions:[...s.decisions, `Declined ${target.name} co-investment (Y4)`]}) },
       ] : [
@@ -221,7 +221,7 @@ function buildDecision(st) {
           { id:"invest", label:`Invest ${fmt(cost)}`, disabled:false, apply: s => {
             const newPos = {...s.positions};
             newPos[target.id+"_sat"] = (newPos[target.id+"_sat"]||0) + cost;
-            return {...s, cash:s.cash-cost, positions:newPos, decisions:[...s.decisions, `Invested ${fmt(cost)} in ${target.name} direct deal (Y5)`]};
+            return {...s, cash:s.cash-cost, positions:newPos, satelliteDeployed:(s.satelliteDeployed||0)+cost, decisions:[...s.decisions, `Invested ${fmt(cost)} in ${target.name} direct deal (Y5)`]};
           }},
           { id:"pass", label:"Pass", disabled:false, apply: s => ({...s, decisions:[...s.decisions, `Passed on ${target.name} direct deal (Y5)`]}) },
         ] : [
@@ -381,7 +381,7 @@ function buildDecision(st) {
       options: st.cash >= cost ? [
         { id:"commit", label:`Commit ${fmt(cost)}`, disabled:false, apply: s => {
           const newPos = {...s.positions}; newPos[target.id+"_sat"] = (newPos[target.id+"_sat"]||0) + cost;
-          return {...s, cash:s.cash-cost, positions:newPos, decisions:[...s.decisions, `Committed ${fmt(cost)} to ${target.name} fund vintage (Y8)`]};
+          return {...s, cash:s.cash-cost, positions:newPos, satelliteDeployed:(s.satelliteDeployed||0)+cost, decisions:[...s.decisions, `Committed ${fmt(cost)} to ${target.name} fund vintage (Y8)`]};
         }},
         { id:"pass", label:"Pass", disabled:false, apply: s => ({...s, decisions:[...s.decisions,"Passed on new fund vintage (Y8)"]}) },
       ] : [
@@ -418,31 +418,6 @@ function buildDecision(st) {
   return null;
 }
 
-/* Rich narrative */
-function buildNarrative(st) {
-  const parts = [];
-  if (st.subscriptionFunded === true) parts.push("You deployed additional capital into your funds early, giving those positions more time to compound through subsequent market cycles.");
-  else if (st.subscriptionFunded === false) parts.push("You held cash through the subscription window, preserving liquidity for later opportunities at the cost of early compounding.");
-  if (st.firstSatellite) {
-    const satVal = st.positions[st.firstSatellite + "_sat"] || 0;
-    const satCls = CLASSES.find(c => c.id === st.firstSatellite);
-    if (satVal > 0 && satCls) parts.push(`Your ${satCls.name} direct investment is now worth ${fmt(satVal)}, reflecting the concentrated risk and return profile of satellite positions.`);
-    else if (satCls) parts.push(`You took a direct position in ${satCls.name} but exited before term, capturing partial value.`);
-  }
-  if (st.premiumExit) parts.push("You sold your VC position at a premium during the tech surge, converting momentum into liquidity.");
-  if (st.forcedLiquidation) parts.push("Running without a cash reserve forced a liquidation at a discount when a capital call came due. That loss was the direct cost of full deployment.");
-  if (st.concentrationPenalty) { const cls = CLASSES.find(c=>c.id===st.concentrationPenalty); if(cls) parts.push(`Accepting concentration in ${cls.name} applied an ongoing performance drag from reduced diversification in the final years.`); }
-  if (st.earlyExitSold === true && !st.premiumExit) parts.push("Selling a position on the secondary market returned capital at a discount, trading future upside for immediate liquidity.");
-  else if (st.earlyExitSold === false) parts.push("Holding through the secondary offer maintained your exposure through the position's primary value-creation period.");
-  if (st.incomeReinvested === true) parts.push("Redeploying accumulated distributions from your cash reserve back into fund positions compounded your core holdings, though it reduced your liquidity buffer.");
-  else if (st.incomeReinvested === false) parts.push("Keeping distributions in your cash reserve preserved your liquidity buffer, giving you flexibility for later commitments.");
-  if (st.deferralPenalty) parts.push("The deferral you requested reduced your distribution priority in the final years, costing you income in the home stretch.");
-  const incomeNames = CLASSES.filter(c => c.core.income || c.sat.income).filter(c => (st.positions[c.id+"_core"]||0) > 0 || (st.positions[c.id+"_sat"]||0) > 0).map(c => c.name);
-  if (incomeNames.length > 0 && (st.cumulativeIncome||0) > 1000) parts.push(`Over ten years, your income-generating positions in ${incomeNames.join(" and ")} produced ${fmt(st.cumulativeIncome)} in total distributions.`);
-  if (parts.length === 0) return null;
-  return parts.join(" ");
-}
-
 /* Advance with transition data */
 function advanceUntilDecision(initState) {
   let st = { ...initState };
@@ -468,12 +443,14 @@ function calcResults(hist) {
   if (hist.length < 2) return null;
   const s = hist[0].totalPortfolio, e = hist[hist.length-1].totalPortfolio;
   const ret = (e-s)/s;
-  const vals = hist.map(h=>h.totalPortfolio);
-  let mdd=0, pk=vals[0];
-  for(const v of vals){if(v>pk)pk=v; const d=(pk-v)/pk; if(d>mdd)mdd=d;}
+  const yearlyReturns = [];
+  for (let i = 1; i < hist.length; i++) {
+    yearlyReturns.push((hist[i].totalPortfolio - hist[i-1].totalPortfolio) / hist[i-1].totalPortfolio);
+  }
+  const worstYear = Math.min(...yearlyReturns);
   const years = hist.length - 1;
   const annualized = years > 0 ? (Math.pow(e/s, 1/years) - 1) * 100 : 0;
-  return { totalReturn:(ret*100).toFixed(1), finalValue:e, maxDrawdown:(mdd*100).toFixed(1), annualized:annualized.toFixed(1) };
+  return { totalReturn:(ret*100).toFixed(1), finalValue:e, worstYear:(worstYear*100).toFixed(1), annualized:annualized.toFixed(1) };
 }
 
 /* ── UI Primitives ── */
@@ -647,6 +624,7 @@ export default function App() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [expandedAsset, setExpandedAsset] = useState(null);
   const [transitions, setTransitions] = useState(null);
+  const [showLog, setShowLog] = useState(false);
 
   const totalAlloc = Object.values(alloc).reduce((a,b)=>a+b,0);
   const over = totalAlloc > 500000;
@@ -669,14 +647,14 @@ export default function App() {
     const init = { year:0, positions:initPos, cash:cashStart, totalIncome:0, cumulativeIncome:0, yearlyIncome:0, envs,
       history:[{year:0, positions:{...initPos}, cash:cashStart, totalPortfolio:500000, env:null, yearlyIncome:0}],
       decisions:[], penaltyPe:false, deferralPenalty:false, forcedLiquidation:false, concentrationPenalty:null,
-      subscriptionFunded:null, firstSatellite:null, earlyExitSold:null, incomeReinvested:null, premiumExit:false };
+      subscriptionFunded:null, firstSatellite:null, earlyExitSold:null, incomeReinvested:null, premiumExit:false, satelliteDeployed:0 };
     runAdvance(init);
   }
   function handleChoice(opt) { if(opt.disabled) return; runAdvance(opt.apply(gsRef.current)); }
   function resetAll() { setPhase("intro"); setAlloc({pe:0,re:0,pc:0,vc:0}); gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setShowConfirm(false); setExpandedAsset(null); setTransitions(null); }
+  function rerunSim() { gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setTransitions(null); startGame(); }
 
   const results = phase==="results"&&gs ? calcResults(gs.history) : null;
-  const realizedReturns = gs && gs.history.length > 1 ? (()=>{const r={};CLASSES.forEach(c=>{const sv=(gs.history[0].positions[c.id+"_core"]||0)+(gs.history[0].positions[c.id+"_sat"]||0);const ev=(gs.positions[c.id+"_core"]||0)+(gs.positions[c.id+"_sat"]||0);if(sv>10000){const yrs=gs.history.length-1;r[c.id]=Math.pow(ev/sv,1/yrs)-1;}});return r;})() : null;
 
   /* ── INTRO ── */
   if(phase==="intro") return(
@@ -754,7 +732,7 @@ export default function App() {
           <h3 style={{fontSize:19,fontWeight:500,color:B.darkTeal,margin:"0 0 10px"}}>{decision.title}</h3>
           <p style={{fontSize:14,color:B.body,lineHeight:1.6,margin:"0 0 18px"}}>{decision.body}</p>
           {decision.lowCashNote&&(<div style={{background:"#fdf0ed",borderRadius:6,padding:"10px 14px",fontSize:13,color:B.red,marginBottom:14,lineHeight:1.5}}>{decision.lowCashNote}</div>)}
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{decision.options.map(opt=>(<Btn key={opt.id} primary={!["decline","pass","hold","cash","cant","force_sell"].includes(opt.id)} disabled={opt.disabled} onClick={()=>handleChoice(opt)} style={{flex:"1 1 auto",minWidth:120}}>{opt.label}</Btn>))}</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{decision.options.map(opt=>(<Btn key={opt.id} primary={decision.options.length===1} disabled={opt.disabled} onClick={()=>handleChoice(opt)} style={{flex:"1 1 auto",minWidth:120}}>{opt.label}</Btn>))}</div>
         </div>)}
         <div style={{marginTop:8}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:8}}>Current Allocation</div><AllocBar positions={gs.positions} cash={gs.cash}/><div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:8}}>{CLASSES.map(c=>{const cv=gs.positions[c.id+"_core"]||0;const sv=gs.positions[c.id+"_sat"]||0;if(cv+sv<=0)return null;return(<div key={c.id} style={{fontSize:12,color:B.body}}><span style={{fontWeight:600,color:c.color}}>{c.short}</span> {fmt(cv+sv)}{sv>0&&<span style={{fontSize:10,color:B.muted,marginLeft:3}}>({fmt(sv)} direct)</span>}</div>);})}{gs.cash>0&&<div style={{fontSize:12,color:B.body}}><span style={{fontWeight:600,color:B.muted}}>CASH</span> {fmt(gs.cash)}</div>}</div></div>
         {gs.decisions.length>0&&(<div style={{marginTop:20}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:6}}>Your Decisions</div>{gs.decisions.map((d,i)=><div key={i} style={{fontSize:12,color:B.body,padding:"4px 0",borderBottom:`1px solid ${B.ltTeal}`}}>{d}</div>)}</div>)}
@@ -764,7 +742,22 @@ export default function App() {
 
   /* ── RESULTS ── */
   if(phase==="results"&&gs&&results) {
-    const narrative = buildNarrative(gs);
+    const startPos = gs.history[0].positions;
+    const endPos = gs.positions;
+    const totalGain = results.finalValue - 500000;
+    const classContrib = CLASSES.map(c => {
+      const startVal = (startPos[c.id+"_core"]||0) + (startPos[c.id+"_sat"]||0);
+      const endVal = (endPos[c.id+"_core"]||0) + (endPos[c.id+"_sat"]||0);
+      return { cls:c, start:startVal, end:endVal, contrib:endVal - startVal };
+    }).filter(x => x.start > 0 || x.end > 0);
+    const startCash = gs.history[0].cash;
+    const cashContrib = gs.cash - startCash - (gs.cumulativeIncome||0);
+    const maxContrib = Math.max(...classContrib.map(x=>Math.abs(x.contrib)), Math.abs(cashContrib), 1);
+    const coreStart = CLASSES.reduce((a,c)=>(a+(startPos[c.id+"_core"]||0)),0);
+    const coreEnd = CLASSES.reduce((a,c)=>(a+(endPos[c.id+"_core"]||0)),0);
+    const satDeployed = gs.satelliteDeployed||0;
+    const satEnd = CLASSES.reduce((a,c)=>(a+(endPos[c.id+"_sat"]||0)),0);
+    const cumIncome = gs.cumulativeIncome||0;
     return(<div style={{fontFamily:font,background:B.white,minHeight:"100vh"}}>
       <div style={{background:B.darkTeal,padding:"36px 28px",textAlign:"center"}}>
         <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".2em",color:B.lime,marginBottom:8}}>SIMULATION COMPLETE</div>
@@ -775,16 +768,50 @@ export default function App() {
         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
           <Stat label="Final Value" value={fmt(results.finalValue)} sub={`${pctFmt(parseFloat(results.totalReturn))} total`} color={parseFloat(results.totalReturn)>=0?B.teal:B.red}/>
           <Stat label="Annualized" value={`${results.annualized}%`} sub="Per year (CAGR)" color={parseFloat(results.annualized)>0?B.teal:B.red}/>
-          <Stat label="Max Drawdown" value={`${results.maxDrawdown}%`} sub="Largest decline" color={parseFloat(results.maxDrawdown)>20?B.warn:B.teal}/>
-          <Stat label="Total Income" value={fmt(gs.cumulativeIncome||0)} sub="From credit and real estate" color={B.teal}/>
+          <Stat label="Worst Year" value={`${results.worstYear}%`} sub={parseFloat(results.worstYear)>=0?"Smallest gain":"Largest single-year decline"} color={parseFloat(results.worstYear)<-10?B.red:parseFloat(results.worstYear)<0?B.warn:B.teal}/>
+          <Stat label="Total Income" value={fmt(cumIncome)} sub="From credit and real estate" color={B.teal}/>
         </div>
         <Chart history={gs.history}/>
-        {narrative&&(<div style={{margin:"20px 0",background:B.cream,borderRadius:8,padding:"18px 20px"}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.teal,marginBottom:8}}>YOUR STORY</div><div style={{fontSize:14,color:B.body,lineHeight:1.7}}>{narrative}</div></div>)}
-        {realizedReturns&&Object.keys(realizedReturns).length>0&&(<div style={{margin:"20px 0"}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:6}}>Expected vs Realized Returns</div><div style={{background:B.cream,borderRadius:8,padding:"16px 14px"}}><RiskReturnChart realized={realizedReturns}/><div style={{fontSize:10,color:B.muted,marginTop:8,lineHeight:1.4}}>Solid dots = expected return (diversified and direct). Dashed circles = your realized annualized return per asset class.</div></div></div>)}
-        <div style={{margin:"20px 0"}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:6}}>Market Scenario</div><div style={{display:"flex",flexWrap:"wrap"}}>{gs.history.filter(h=>h.env).map((h,i)=><EventTag key={i} env={h.env}/>)}</div></div>
-        <div style={{margin:"20px 0"}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:8}}>Decision History</div><div style={{background:B.cream,borderRadius:8,padding:"16px 18px"}}>{gs.decisions.length>0?gs.decisions.map((d,i)=>(<div key={i} style={{fontSize:13,color:B.body,padding:"6px 0",borderBottom:i<gs.decisions.length-1?`1px solid ${B.ltTeal}`:"none"}}>{d}</div>)):<div style={{fontSize:13,color:B.muted}}>No decisions reached.</div>}</div></div>
+        <div style={{margin:"20px 0",background:B.cream,borderRadius:8,padding:"18px 20px"}}>
+          <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:12}}>Returns Attribution</div>
+          {classContrib.map(({cls,start,end,contrib})=>{const pct=totalGain!==0?Math.round((contrib/totalGain)*100):0;const barW=Math.round((Math.abs(contrib)/maxContrib)*100);return(
+            <div key={cls.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${B.ltTeal}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,minWidth:110}}><span style={{width:8,height:8,borderRadius:2,background:cls.color,display:"inline-block",flexShrink:0}}/><span style={{fontSize:13,fontWeight:500,color:B.darkTeal}}>{cls.name}</span></div>
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}><div style={{flex:1,height:6,background:B.ltTeal,borderRadius:3,position:"relative"}}><div style={{position:"absolute",top:0,left:contrib>=0?0:undefined,right:contrib<0?0:undefined,height:"100%",width:`${barW}%`,background:contrib>=0?cls.color:B.red,borderRadius:3,opacity:.7}}/></div></div>
+              <div style={{textAlign:"right",minWidth:70}}><span style={{fontSize:13,fontWeight:600,color:contrib>=0?B.teal:B.red}}>{contrib>=0?"+":""}{fmt(contrib)}</span></div>
+              <div style={{textAlign:"right",minWidth:36}}><span style={{fontSize:11,color:B.muted}}>{totalGain!==0?`${pct}%`:"\u2014"}</span></div>
+            </div>);})}
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,minWidth:110}}><span style={{width:8,height:8,borderRadius:2,background:B.muted,display:"inline-block",flexShrink:0}}/><span style={{fontSize:13,fontWeight:500,color:B.darkTeal}}>Cash</span></div>
+            <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}><div style={{flex:1,height:6,background:B.ltTeal,borderRadius:3,position:"relative"}}>{cashContrib!==0&&<div style={{position:"absolute",top:0,right:0,height:"100%",width:`${Math.round((Math.abs(cashContrib)/maxContrib)*100)}%`,background:B.red,borderRadius:3,opacity:.7}}/>}</div></div>
+            <div style={{textAlign:"right",minWidth:70}}><span style={{fontSize:13,fontWeight:600,color:cashContrib<=0?B.muted:B.teal}}>{fmt(cashContrib)}</span></div>
+            <div style={{textAlign:"right",minWidth:36}}><span style={{fontSize:11,color:B.muted}}>{"\u2014"}</span></div>
+          </div>
+        </div>
+        <div style={{margin:"20px 0",background:B.cream,borderRadius:8,padding:"18px 20px"}}>
+          <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:12}}>Core vs. Satellite vs. Income</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:"0",fontSize:13}}>
+            <div style={{padding:"6px 0",borderBottom:`1px solid ${B.ltTeal}`,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted}}></div>
+            <div style={{padding:"6px 8px",borderBottom:`1px solid ${B.ltTeal}`,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted,textAlign:"right"}}>Start</div>
+            <div style={{padding:"6px 8px",borderBottom:`1px solid ${B.ltTeal}`,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted,textAlign:"right"}}>End</div>
+            <div style={{padding:"6px 0 6px 8px",borderBottom:`1px solid ${B.ltTeal}`,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted,textAlign:"right"}}>Return</div>
+            <div style={{padding:"8px 0",borderBottom:`1px solid ${B.ltTeal}`,color:B.darkTeal,fontWeight:500}}>Core <span style={{fontSize:11,color:B.muted,fontWeight:400}}>(diversified funds)</span></div>
+            <div style={{padding:"8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",color:B.body}}>{fmt(coreStart)}</div>
+            <div style={{padding:"8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",color:B.body}}>{fmt(coreEnd)}</div>
+            <div style={{padding:"8px 0 8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",fontWeight:600,color:coreEnd>=coreStart?B.teal:B.red}}>{coreStart>0?pctFmt(((coreEnd-coreStart)/coreStart)*100):"\u2014"}</div>
+            <div style={{padding:"8px 0",borderBottom:`1px solid ${B.ltTeal}`,color:B.darkTeal,fontWeight:500}}>Satellite <span style={{fontSize:11,color:B.muted,fontWeight:400}}>(direct deals)</span></div>
+            <div style={{padding:"8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",color:B.body}}>{satDeployed>0?fmt(satDeployed):"\u2014"}</div>
+            <div style={{padding:"8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",color:B.body}}>{satEnd>0?fmt(satEnd):"\u2014"}</div>
+            <div style={{padding:"8px 0 8px 8px",borderBottom:`1px solid ${B.ltTeal}`,textAlign:"right",fontWeight:600,color:satDeployed>0&&satEnd>=satDeployed?B.teal:satDeployed>0?B.red:B.muted}}>{satDeployed>0?pctFmt(((satEnd-satDeployed)/satDeployed)*100):"\u2014"}</div>
+            <div style={{padding:"8px 0",color:B.darkTeal,fontWeight:500}}>Income <span style={{fontSize:11,color:B.muted,fontWeight:400}}>(cumulative distributions)</span></div>
+            <div style={{padding:"8px 8px",textAlign:"right",color:B.muted}}>{"\u2014"}</div>
+            <div style={{padding:"8px 8px",textAlign:"right",color:B.body}}>{fmt(cumIncome)}</div>
+            <div style={{padding:"8px 0 8px 8px",textAlign:"right",color:B.muted}}>{"\u2014"}</div>
+          </div>
+        </div>
         <FrameworkReveal positions={gs.positions} cash={gs.cash}/>
-        <div style={{display:"flex",gap:10}}><Btn primary onClick={resetAll} style={{flex:1}}>Play Again</Btn><Btn onClick={()=>{setPhase("allocate");gsRef.current=null;setGs(null);setDecision(null);setSummary(null);setTransitions(null);}} style={{flex:1}}>New Allocation</Btn></div>
+        <div style={{display:"flex",gap:10}}><Btn primary onClick={rerunSim} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}><span>Rerun Simulation</span><span style={{fontSize:11,fontWeight:400,opacity:.7,marginTop:2}}>Same allocation, different markets</span></Btn><Btn onClick={resetAll} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}><span>Start Over</span><span style={{fontSize:11,fontWeight:400,opacity:.7,marginTop:2}}>Choose a new allocation</span></Btn></div>
+        {gs.decisions.length>0&&(<div style={{marginTop:20}}><div style={{fontSize:11,color:B.teal,cursor:"pointer",fontWeight:500}} onClick={()=>setShowLog(!showLog)}>{showLog?"Hide decision log":"View decision log"}</div>{showLog&&(<div style={{marginTop:8,background:B.cream,borderRadius:8,padding:"12px 16px"}}>{gs.decisions.map((d,i)=>(<div key={i} style={{fontSize:12,color:B.body,padding:"4px 0",borderBottom:i<gs.decisions.length-1?`1px solid ${B.ltTeal}`:"none"}}>{d}</div>))}</div>)}</div>)}
         <div style={{marginTop:28,padding:14,background:B.cream,borderRadius:8,fontSize:11,color:B.muted,lineHeight:1.5}}>Simulated performance for educational purposes only. Not indicative of actual results or future returns. Past performance, real or simulated, does not guarantee future results. All investments involve risk, including possible loss of principal.</div>
       </div>
     </div>);
