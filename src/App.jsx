@@ -11,29 +11,6 @@ const fmt = (n) => { if (Math.abs(n) >= 1e6) return `$${(n/1e6).toFixed(2)}M`; i
 const pctFmt = (n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 const rnd = (lo, hi) => Math.random() * (hi - lo) + lo;
 
-/*
-  v7 — Combined build. Best of both v6 variants.
-
-  From v6-A (mine):
-  - Default allocation zeroed (player builds from scratch)
-  - Forced liquidation at Y6 when cash near 0
-  - Deep environment explainers with "Why it matters" toggle
-  - Two-step Willow reveal (concept → products)
-  - Income tracker visible during gameplay
-  - Portfolio-dependent branching (VC premium exit in tech surge, RE distressed exit in rate hike)
-  - Rich narrative connecting decisions to outcomes
-  - Cumulative income tracking and Total Income stat
-
-  From v6-B (theirs):
-  - Year transition scenes (animated overlay between decisions)
-  - Y3 player chooses which asset class to go direct in
-  - Y6 concentration penalty (>55% triggers warning, ongoing drag)
-  - Realized vs expected scatter chart in results
-  - Annualized return (CAGR) stat
-  - Budget-locked slider toggle (zero-sum mode)
-  - Concentration drag in sim engine
-*/
-
 /* ── Asset class definitions ── */
 const CLASSES = [
   { id:"pe", name:"Private Equity", short:"PE", color:"#2d5be3",
