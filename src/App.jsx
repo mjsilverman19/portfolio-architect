@@ -7,74 +7,72 @@ const B = {
   white: "#fff", muted: "#7a7d82", red: "#c0392b", warn: "#e67e22", green: "#1a7a4c",
 };
 const font = '"Linik Sans", system-ui, sans-serif';
-const fmt = (n) => { if (Math.abs(n) >= 1e6) return `$${(n/1e6).toFixed(2)}M`; if (Math.abs(n) >= 1e3) return `$${(n/1e3).toFixed(0)}K`; return `$${Math.round(n)}`; };
+const fmt = (n) => { const a=Math.abs(n); if(a<1) return "$0"; const sign=n<0?"\u2212":""; if(a>=1e6) return `${sign}$${(a/1e6).toFixed(2)}M`; if(a>=1e3) return `${sign}$${(a/1e3).toFixed(0)}K`; return `${sign}$${Math.round(a)}`; };
 const pctFmt = (n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 const rnd = (lo, hi) => Math.random() * (hi - lo) + lo;
 
 /* ── Asset class definitions ── */
 const CLASSES = [
   { id:"pe", name:"Private Equity", short:"PE", color:"#2d5be3",
-    core: { ret:0.09, vol:0.12, income:false, incomeRate:0, jCurve:false },
-    sat:  { ret:0.16, vol:0.28, income:false, incomeRate:0, jCurve:true, lockup:5 },
+    core: { ret:0.14, vol:0.11, income:false, incomeRate:0, jCurve:false },
+    sat:  { ret:0.21, vol:0.19, income:false, incomeRate:0, jCurve:true, lockup:5 },
     desc:"Funds that buy, improve, and sell private companies over multi-year holding periods.",
     edu:"Private equity generates returns by acquiring companies, improving operations, and selling them at a profit. Through a diversified fund, your capital is spread across dozens of deals with periodic liquidity. Through a direct investment, you take a concentrated position in a single fund with a multi-year lockup and higher return potential.",
     traits:["Returns driven by operational improvement and exits","Diversified fund: broad exposure, periodic liquidity","Direct investment: concentrated, 5+ year lockup"] },
   { id:"re", name:"Real Estate", short:"RE", color:"#d4820a",
-    core: { ret:0.07, vol:0.10, income:true, incomeRate:0.04, jCurve:false },
-    sat:  { ret:0.12, vol:0.22, income:true, incomeRate:0.05, jCurve:true, lockup:4 },
+    core: { ret:0.07, vol:0.07, income:true, incomeRate:0.04, jCurve:false },
+    sat:  { ret:0.16, vol:0.15, income:true, incomeRate:0.05, jCurve:true, lockup:4 },
     desc:"Investments in commercial and residential properties that generate rental income and grow in value over time.",
     edu:"Real estate earns returns through rental income and property value appreciation. Diversified fund positions provide exposure across property types and geographies. Direct investments offer concentrated bets on specific properties or strategies with higher income potential and more sensitivity to interest rate cycles.",
     traits:["Income from rent plus property value growth","Diversified fund: steady, broad income stream","Direct investment: concentrated, higher yield potential"] },
   { id:"pc", name:"Private Credit", short:"PC", color:"#1a9a6f",
-    core: { ret:0.07, vol:0.08, income:true, incomeRate:0.06, jCurve:false },
-    sat:  { ret:0.10, vol:0.16, income:true, incomeRate:0.08, jCurve:false, lockup:2 },
+    core: { ret:0.09, vol:0.05, income:true, incomeRate:0.06, jCurve:false },
+    sat:  { ret:0.12, vol:0.09, income:true, incomeRate:0.08, jCurve:false, lockup:2 },
     desc:"Lending outside the banking system that generates regular interest income for investors.",
     edu:"Private credit funds lend capital to borrowers and earn interest in return. Diversified fund positions offer floating-rate exposure that tends to perform well when rates rise. Direct investments offer individual lending opportunities with higher yields and more concentrated default risk.",
     traits:["Regular income from interest payments","Rates adjust with the market (floating rate)","Diversified fund: broad. Direct: higher yield, default risk"] },
   { id:"vc", name:"Venture Capital", short:"VC", color:"#8b5cf6",
-    core: { ret:0.11, vol:0.18, income:false, incomeRate:0, jCurve:false },
-    sat:  { ret:0.22, vol:0.38, income:false, incomeRate:0, jCurve:true, lockup:7 },
+    core: { ret:0.11, vol:0.15, income:false, incomeRate:0, jCurve:false },
+    sat:  { ret:0.23, vol:0.25, income:false, incomeRate:0, jCurve:true, lockup:7 },
     desc:"Investments in early-stage companies where a small number of successes drive the majority of returns.",
     edu:"Venture capital funds invest in startups. Most fail, but the winners can return multiples of invested capital. Through a diversified fund, your exposure is spread across many companies. Through a direct investment, you take a concentrated position with a 7 to 10 year lockup and the widest return dispersion of any asset class.",
     traits:["Extreme return dispersion between managers","Longest lockup period of any asset class","Diversified fund: managed risk. Direct: highest ceiling"] },
+];
+
+/* ── Allocation presets ── */
+const PRESETS = [
+  { id: "growth", label: "Growth", desc: "Maximizes long-term appreciation. Heavier PE and VC allocation with minimal cash reserve.",
+    alloc: { pe: 200000, re: 50000, pc: 50000, vc: 150000 }, cash: 50000 },
+  { id: "income", label: "Income", desc: "Prioritizes steady distributions. Weighted toward Private Credit and Real Estate.",
+    alloc: { pe: 50000, re: 150000, pc: 200000, vc: 0 }, cash: 100000 },
+  { id: "balanced", label: "Balanced", desc: "Equal exposure across asset classes with a meaningful cash buffer.",
+    alloc: { pe: 100000, re: 100000, pc: 100000, vc: 100000 }, cash: 100000 },
 ];
 
 /* ── Environments with deep explainers ── */
 const ENVS = [
   { id:"boom", label:"Economic Expansion",
     narrative:"Strong GDP growth and consumer confidence drive asset values higher across the board.",
-    m:{ pe:{c:1.11,s:1.28}, re:{c:1.08,s:1.18}, pc:{c:1.05,s:1.06}, vc:{c:1.14,s:1.45} },
+    m:{ pe:{c:1.189,s:1.251}, re:{c:1.137,s:1.222}, pc:{c:1.127,s:1.170}, vc:{c:1.108,s:1.159} },
     explainer:"Strong GDP growth lifts corporate earnings and startup valuations. PE and VC benefit most from rising exit multiples. Private credit generates steady income but limited upside in expansions. Real estate appreciates on rising rents and occupancy." },
-  { id:"recession", label:"Recession",
-    narrative:"Economic contraction hits valuations hard. Concentrated positions suffer the most.",
-    m:{ pe:{c:0.93,s:0.72}, re:{c:0.94,s:0.76}, pc:{c:0.97,s:0.90}, vc:{c:0.90,s:0.52} },
-    explainer:"Falling demand compresses valuations across risk assets. Direct positions suffer most from concentrated exposure to distressed companies. Private credit holds up best because floating-rate loans still generate income, though default risk rises. VC direct deals face the steepest losses as startups burn cash without new funding rounds." },
   { id:"rate_hike", label:"Rate Hike Cycle",
-    narrative:"Central banks raise rates aggressively. Floating-rate credit benefits while real estate cap rates compress.",
-    m:{ pe:{c:0.97,s:0.91}, re:{c:0.96,s:0.82}, pc:{c:1.04,s:1.08}, vc:{c:0.95,s:0.86} },
-    explainer:"Rising rates increase borrowing costs, pressuring leveraged buyouts and real estate cap rates. Private credit is the clear winner: floating-rate loans reset higher, increasing income. Real estate direct deals suffer most as higher rates compress property valuations." },
+    narrative:"Central banks raise rates aggressively. Floating-rate credit benefits while equity valuations compress.",
+    m:{ pe:{c:0.976,s:0.968}, re:{c:1.060,s:1.097}, pc:{c:1.045,s:1.060}, vc:{c:0.846,s:0.774} },
+    explainer:"Rising rates increase borrowing costs, pressuring leveraged buyouts and venture valuations. Private credit is the clear winner: floating-rate loans reset higher, increasing income. Real estate holds up as rents adjust upward. VC suffers the steepest decline as higher discount rates compress growth-stage valuations." },
   { id:"rate_cut", label:"Rate Cuts Begin",
     narrative:"Easing monetary policy lifts valuations and reopens exit windows for private equity.",
-    m:{ pe:{c:1.06,s:1.10}, re:{c:1.06,s:1.14}, pc:{c:0.99,s:0.96}, vc:{c:1.08,s:1.18} },
-    explainer:"Falling rates lower discount rates, boosting asset valuations across the board. Real estate benefits from cheaper financing and compressing cap rates. Private credit income declines as floating rates reset lower. PE and VC exit activity picks up." },
-  { id:"tech_surge", label:"Tech Sector Surge",
-    narrative:"A wave of AI and automation investment sends venture-backed valuations soaring.",
-    m:{ pe:{c:1.04,s:1.06}, re:{c:1.01,s:1.00}, pc:{c:1.01,s:1.00}, vc:{c:1.12,s:1.55} },
-    explainer:"A technology rally drives outsized gains in venture capital, especially direct positions with concentrated exposure to high-growth startups. Other asset classes see minimal impact. Real estate and credit are largely uncorrelated to tech-sector momentum." },
+    m:{ pe:{c:1.156,s:1.207}, re:{c:1.100,s:1.162}, pc:{c:1.077,s:1.103}, vc:{c:1.169,s:1.248} },
+    explainer:"Falling rates lower discount rates, boosting asset valuations across the board. PE and VC benefit most as exit activity picks up and growth-stage companies see multiple expansion. Real estate benefits from cheaper financing. Private credit income declines as floating rates reset lower." },
   { id:"credit_crunch", label:"Credit Crunch",
     narrative:"Lending standards tighten sharply. Borrowers struggle and default rates tick up.",
-    m:{ pe:{c:0.94,s:0.82}, re:{c:0.95,s:0.86}, pc:{c:0.94,s:0.84}, vc:{c:0.92,s:0.72} },
-    explainer:"Tightening credit conditions hit every asset class. Defaults rise in private credit, refinancing becomes difficult for PE portfolio companies, and VC startups lose access to growth capital. Diversified positions cushion the blow relative to concentrated direct deals." },
+    m:{ pe:{c:1.060,s:1.080}, re:{c:0.964,s:0.942}, pc:{c:1.094,s:1.126}, vc:{c:0.937,s:0.907} },
+    explainer:"Tightening credit conditions pressure real estate and venture capital. Real estate declines as financing dries up and transaction volume falls. VC startups lose access to growth capital. Private equity and credit prove more resilient, with credit funds benefiting from higher spreads on performing loans." },
   { id:"steady", label:"Stable Growth",
     narrative:"Moderate, broad-based growth. All asset classes perform near long-term averages.",
-    m:{ pe:{c:1.06,s:1.07}, re:{c:1.04,s:1.05}, pc:{c:1.04,s:1.05}, vc:{c:1.06,s:1.08} },
-    explainer:"A benign environment with moderate growth and stable rates. All asset classes produce returns close to their long-term averages. The spread between core and satellite positions narrows in calm markets." },
-  { id:"inflation", label:"Inflation Spike",
-    narrative:"Unexpected inflation erodes purchasing power. Real assets and floating-rate instruments hold up.",
-    m:{ pe:{c:0.98,s:0.94}, re:{c:1.04,s:1.09}, pc:{c:1.02,s:1.01}, vc:{c:0.94,s:0.82} },
-    explainer:"Rising inflation erodes purchasing power but benefits real assets. Real estate performs well as rents and property values adjust upward. Private credit's floating rates offer partial protection. Venture capital suffers as high inflation raises discount rates on future cash flows." },
+    m:{ pe:{c:1.066,s:1.088}, re:{c:1.001,s:1.002}, pc:{c:1.089,s:1.119}, vc:{c:1.014,s:1.021} },
+    explainer:"A benign environment with moderate growth and stable rates. PE and private credit lead with steady returns. Real estate and venture capital deliver muted performance. The spread between core and satellite positions is narrow in calm markets." },
 ];
-function pickEnv(){ const r=Math.random(); if(r<.12) return ENVS[1]; if(r<.22) return ENVS[2]; if(r<.32) return ENVS[3]; if(r<.39) return ENVS[4]; if(r<.45) return ENVS[5]; if(r<.52) return ENVS[7]; if(r<.68) return ENVS[0]; return ENVS[6]; }
+function pickEnv(){ const r=Math.random(); if(r<.20) return ENVS[0]; if(r<.35) return ENVS[1]; if(r<.50) return ENVS[2]; if(r<.65) return ENVS[3]; return ENVS[4]; }
 
 /* ── Simulation engine (with concentration drag) ── */
 function simYear(st, env) {
@@ -286,15 +284,16 @@ function buildDecision(st) {
         const discount = 0.15;
         const sellAmt = Math.min(sellTarget.val, Math.round(callAmt / (1 - discount)));
         const proceeds = Math.round(sellAmt * (1 - discount));
+        const positionCost = sellAmt;
         return {
           title: "Capital Call Due",
-          body: `A commitment from your fund subscriptions requires a ${fmt(callAmt)} capital call, and your cash reserve is effectively empty. You must sell part of your ${sellTarget.cls.name} diversified position at a 15% discount on the secondary market to meet the obligation. This is the cost of running without a liquidity buffer.`,
+          body: `A commitment from your fund subscriptions requires a ${fmt(callAmt)} capital call, and your cash reserve is effectively empty. You must sell ${fmt(positionCost)} of your ${sellTarget.cls.name} diversified position on the secondary market. After a 15% liquidity discount, this nets ${fmt(proceeds)} to cover the ${fmt(callAmt)} obligation.`,
           options: [
-            { id:"force_sell", label:`Forced Sale: ${fmt(proceeds)} net`, disabled:false, apply: s => {
+            { id:"force_sell", label:`Forced Sale: −${fmt(positionCost)} position`, disabled:false, apply: s => {
               const newPos = {...s.positions};
               newPos[sellTarget.id] = Math.max(0, (newPos[sellTarget.id]||0) - sellAmt);
               return {...s, cash: s.cash + proceeds - callAmt, positions:newPos, forcedLiquidation:true,
-                decisions:[...s.decisions, `Forced to sell ${sellTarget.cls.name} position at 15% discount to meet ${fmt(callAmt)} capital call (Y6)`]};
+                decisions:[...s.decisions, `Forced to sell ${sellTarget.cls.name} position at 15% discount to meet ${fmt(callAmt)} capital call (Y6)` + (s.history[0].cash === 0 ? ". This outcome was driven by entering the simulation with no cash reserve." : "")]};
             }},
           ],
           lowCashNote: `Your cash reserve is ${fmt(st.cash)}. With no liquidity buffer, you have no choice but to sell at a discount.`,
@@ -426,13 +425,24 @@ function advanceUntilDecision(initState) {
   let transitions = [];
   while (st.year < 10) {
     const env = st.envs[st.year];
+    const prevPositions = { ...st.positions };
     const { positions: newPos, income } = simYear(st, env);
     const prevTotal = st.history[st.history.length - 1].totalPortfolio;
     /* Distributions flow directly to cash reserve each year */
     st = { ...st, year:st.year+1, positions:newPos, cash:st.cash+income, totalIncome:st.totalIncome+income, cumulativeIncome:(st.cumulativeIncome||0)+income, yearlyIncome:income };
+    /* Detect satellite positions wiped out this year */
+    const wipeouts = [];
+    CLASSES.forEach(cls => {
+      const prevSat = prevPositions[cls.id + "_sat"] || 0;
+      const newSat = newPos[cls.id + "_sat"] || 0;
+      if (prevSat > 0 && newSat === 0) {
+        wipeouts.push({ cls, prevVal: prevSat });
+        st = { ...st, decisions: [...st.decisions, `${cls.name} direct investment written off — portfolio companies failed to secure follow-on funding (Y${st.year})`] };
+      }
+    });
     const tp = totalPortfolio(st);
     st.history = [...st.history, { year:st.year, positions:{...st.positions}, cash:st.cash, totalPortfolio:tp, env, yearlyIncome:income }];
-    transitions.push({ year:st.year, env, prevTotal, newTotal:tp, change:((tp-prevTotal)/prevTotal)*100 });
+    transitions.push({ year:st.year, env, prevTotal, newTotal:tp, change:((tp-prevTotal)/prevTotal)*100, wipeouts: wipeouts.length > 0 ? wipeouts : undefined });
     const d = buildDecision(st);
     if (d) { summary = { year:st.year, env, totalPortfolio:tp, prevTotal }; decision = d; break; }
   }
@@ -481,7 +491,7 @@ const PieChart = ({alloc, reserve})=>{
     <div style={{display:"flex",flexDirection:"column",gap:5}}>{CLASSES.map(a=>{const pct=((alloc[a.id]/total)*100).toFixed(0);return alloc[a.id]>0?(<div key={a.id} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:B.body}}><span style={{width:10,height:10,borderRadius:2,background:a.color,display:"inline-block",flexShrink:0}}/><span style={{fontWeight:600,minWidth:30}}>{a.short}</span><span style={{color:B.muted}}>{pct}%</span></div>):null;})}{reserve>0&&<div style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:B.body}}><span style={{width:10,height:10,borderRadius:2,background:B.ltTeal,display:"inline-block",flexShrink:0}}/><span style={{fontWeight:600,minWidth:30}}>Cash</span><span style={{color:B.muted}}>{((reserve/total)*100).toFixed(0)}%</span></div>}</div>
   </div>);
 };
-const Chart = ({history})=>{
+const Chart = ({history, decisions})=>{
   if(history.length<2) return null;
   /* Generate quarterly points between yearly data for a more realistic curve */
   const qPoints = [];
@@ -531,6 +541,17 @@ const Chart = ({history})=>{
       if (qi >= pts.length) return null;
       return <text key={i} x={pts[qi].x} y={pad.t+ch+16} textAnchor="middle" fontSize={9} fill={B.muted}>{i===0?"Start":`Y${x.year}`}</text>;
     })}
+    {decisions && (() => {
+      const decYears = new Set();
+      decisions.forEach(d => { const m = d.match(/\(Y(\d+)\)/); if (m) decYears.add(parseInt(m[1])); });
+      return history.map((x, i) => {
+        if (!decYears.has(x.year)) return null;
+        const qi = i * 4;
+        if (qi >= pts.length) return null;
+        const p = pts[qi];
+        return <polygon key={`dec-${i}`} points={`${p.x},${p.y-7} ${p.x+5},${p.y} ${p.x},${p.y+7} ${p.x-5},${p.y}`} fill={B.lime} stroke={B.darkTeal} strokeWidth={1}/>;
+      });
+    })()}
   </svg>);
 };
 const RiskReturnChart = ({highlighted, realized})=>{
@@ -538,7 +559,7 @@ const RiskReturnChart = ({highlighted, realized})=>{
   return(<svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{display:"block"}}><rect x={0} y={0} width={w} height={h} rx={6} fill={B.white}/>{[0,.5,1].map((p,i)=>{const y=pad.t+ch*(1-p);return(<g key={i}><line x1={pad.l} x2={w-pad.r} y1={y} y2={y} stroke={B.ltTeal} strokeWidth={.5}/><text x={pad.l-6} y={y+4} textAnchor="end" fontSize={10} fill={B.muted}>{Math.round(p*25)}%</text></g>);})}{[0,.5,1].map((p,i)=>{const x=pad.l+cw*p;return(<g key={i}><line x1={x} x2={x} y1={pad.t} y2={pad.t+ch} stroke={B.ltTeal} strokeWidth={.5}/><text x={x} y={pad.t+ch+14} textAnchor="middle" fontSize={10} fill={B.muted}>{["Low","Med","High"][i]}</text></g>);})}<text x={pad.l+cw/2} y={h-4} textAnchor="middle" fontSize={10} fill={B.muted}>Volatility</text><text x={10} y={pad.t+ch/2} textAnchor="middle" fontSize={10} fill={B.muted} transform={`rotate(-90,10,${pad.t+ch/2})`}>Return</text>{CLASSES.map(c=>{const isHl=c.id===highlighted;const cx1=pad.l+(c.core.vol/0.40)*cw,cy1=pad.t+(1-c.core.ret/0.25)*ch;const cx2=pad.l+(c.sat.vol/0.40)*cw,cy2=pad.t+(1-c.sat.ret/0.25)*ch;const r=realized?.[c.id];const rx=r!=null?pad.l+(c.core.vol/0.40)*cw:null;const ry=r!=null?pad.t+(1-Math.min(Math.max(r,0),0.25)/0.25)*ch:null;return(<g key={c.id}><circle cx={cx1} cy={cy1} r={isHl?6:4} fill={c.color} opacity={isHl?0.5:0.15}/><circle cx={cx2} cy={cy2} r={isHl?6:4} fill={c.color} opacity={isHl?1:0.25} stroke={isHl?B.darkTeal:"none"} strokeWidth={1}/>{isHl&&<line x1={cx1} y1={cy1} x2={cx2} y2={cy2} stroke={c.color} strokeWidth={1} strokeDasharray="2,2" opacity={0.4}/>}{r!=null&&rx!=null&&<circle cx={rx} cy={ry} r={5} fill="none" stroke={c.color} strokeWidth={2} strokeDasharray="3,2"/>}<text x={cx2} y={cy2-10} textAnchor="middle" fontSize={10} fontWeight={isHl?600:400} fill={isHl?B.darkTeal:B.muted}>{c.short}</text></g>);})}</svg>);
 };
 const AssetDetail = ({cls})=>(<div style={{background:B.cream,borderRadius:8,padding:"16px 18px",marginTop:8,marginBottom:4}}><div style={{maxWidth:320,marginBottom:14}}><RiskReturnChart highlighted={cls.id}/></div><div style={{fontSize:10,color:B.muted,marginBottom:8}}>Faded dot = diversified fund. Solid dot = direct investment.</div><div style={{fontSize:13,color:B.body,lineHeight:1.6,marginBottom:10}}>{cls.edu}</div><div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:8}}>{cls.traits.map((t,i)=>(<div key={i} style={{fontSize:11,color:B.teal,display:"flex",alignItems:"baseline",gap:6}}><span style={{width:4,height:4,borderRadius:1,background:cls.color,flexShrink:0,marginTop:4}}/><span>{t}</span></div>))}</div></div>);
-const EventTag = ({env})=>{const neg=["recession","credit_crunch","inflation"].includes(env.id);const pos=["boom","tech_surge","rate_cut"].includes(env.id);return(<span style={{display:"inline-block",padding:"5px 12px",borderRadius:5,fontSize:12,fontWeight:500,background:neg?"#fdf0ed":pos?"#edfaf2":B.gray,color:neg?B.red:pos?B.green:B.body,marginRight:6,marginBottom:6}}>{env.label}</span>);};
+const EventTag = ({env})=>{const neg=["rate_hike","credit_crunch"].includes(env.id);const pos=["boom","rate_cut"].includes(env.id);return(<span style={{display:"inline-block",padding:"5px 12px",borderRadius:5,fontSize:12,fontWeight:500,background:neg?"#fdf0ed":pos?"#edfaf2":B.gray,color:neg?B.red:pos?B.green:B.body,marginRight:6,marginBottom:6}}>{env.label}</span>);};
 
 /* Environment explainer */
 const EnvExplainer = ({env})=>{
@@ -574,14 +595,15 @@ const YearTransition = ({transitions, onComplete}) => {
   }, [idx, transitions.length, onComplete]);
   if (idx >= transitions.length) return null;
   const tr = transitions[idx];
-  const neg = ["recession","credit_crunch","inflation"].includes(tr.env?.id);
-  const pos = ["boom","tech_surge","rate_cut"].includes(tr.env?.id);
+  const neg = ["rate_hike","credit_crunch"].includes(tr.env?.id);
+  const pos = ["boom","rate_cut"].includes(tr.env?.id);
   const borderColor = neg ? B.red : pos ? B.green : B.teal;
   return (<div style={{position:"fixed",inset:0,background:"rgba(0,46,48,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20,backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)"}}>
     <div style={{background:B.white,borderRadius:14,padding:"32px 36px",maxWidth:400,width:"100%",textAlign:"center",borderTop:`4px solid ${borderColor}`,boxShadow:"0 12px 48px rgba(0,0,0,0.2)",opacity:visible?1:0,transform:visible?"translateY(0) scale(1)":"translateY(-10px) scale(0.97)",transition:"opacity 0.3s, transform 0.3s"}}>
       <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".18em",color:B.muted,marginBottom:6}}>YEAR {tr.year}</div>
       <div style={{fontSize:20,fontWeight:500,color:B.darkTeal,marginBottom:8}}>{tr.env?.label||"Market Update"}</div>
-      <div style={{fontSize:13,color:B.body,lineHeight:1.55,marginBottom:16}}>{tr.env?.narrative}</div>
+      <div style={{fontSize:13,color:B.body,lineHeight:1.55,marginBottom:tr.wipeouts?8:16}}>{tr.env?.narrative}</div>
+      {tr.wipeouts&&tr.wipeouts.map((wo,i)=>(<div key={i} style={{fontSize:13,fontWeight:500,color:B.red,marginBottom:i===tr.wipeouts.length-1?16:4}}>Your {wo.cls.name} direct position was written off.</div>))}
       <div style={{display:"flex",justifyContent:"center",gap:24}}>
         <div><div style={{fontSize:10,color:B.muted,textTransform:"uppercase",letterSpacing:".1em"}}>Portfolio</div><div style={{fontSize:20,fontWeight:500,color:B.teal}}>{fmt(tr.newTotal)}</div></div>
         <div><div style={{fontSize:10,color:B.muted,textTransform:"uppercase",letterSpacing:".1em"}}>This Year</div><div style={{fontSize:20,fontWeight:500,color:tr.change>=0?B.green:B.red}}>{pctFmt(tr.change)}</div></div>
@@ -591,7 +613,7 @@ const YearTransition = ({transitions, onComplete}) => {
 };
 
 /* Framework Reveal — v5-style single step (Willow brand + products immediately) */
-const FrameworkReveal = ({positions, cash})=>{
+const FrameworkReveal = ({positions, cash, concentrationPenalty})=>{
   const cv=coreTotal({positions}); const sv=satTotal({positions}); const total=cv+sv+cash;
   if (total<=0) return null;
   const cPct=Math.round(cv/total*100), sPct=Math.round(sv/total*100), lPct=Math.round(cash/total*100);
@@ -606,7 +628,7 @@ const FrameworkReveal = ({positions, cash})=>{
     </div>
     {[
       {label:"Core",pct:cPct,color:B.green,desc:"Evergreen funds from Goldman Sachs, Carlyle, and StepStone. Diversified exposure with daily NAV and quarterly liquidity.",val:cv},
-      {label:"Satellite",pct:sPct,color:"#d4820a",desc:"Direct investments via the Willow marketplace. Higher return potential with lockups and concentrated risk.",val:sv},
+      {label:"Satellite",pct:sPct,color:"#d4820a",desc:"Direct investments via the Willow marketplace. Higher return potential with lockups and concentrated risk." + (concentrationPenalty ? ` Concentration drag from ${(CLASSES.find(c=>c.id===concentrationPenalty)||{}).name||"a position"} reduced satellite returns in this simulation.` : ""),val:sv},
       {label:"Liquidity",pct:lPct,color:B.muted,desc:"Your cash earned nothing during the simulation. On Willow, Short Term Notes earn yield on idle capital while preserving access.",val:cash},
     ].map(b=>(<div key={b.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${B.ltTeal}`}}><div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{width:8,height:8,borderRadius:2,background:b.color,display:"inline-block"}}/><span style={{fontWeight:600,fontSize:13,color:B.darkTeal}}>{b.label}</span></div><div style={{fontSize:11,color:B.muted,marginLeft:16,maxWidth:340}}>{b.desc}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:600,color:B.teal}}>{fmt(b.val)}</div><div style={{fontSize:11,color:B.muted}}>{b.pct}%</div></div></div>))}
     <div style={{marginTop:16,textAlign:"center"}}><div style={{display:"inline-block",padding:"14px 36px",borderRadius:6,background:B.darkTeal,color:B.lime,fontWeight:600,fontSize:14,cursor:"pointer",letterSpacing:".02em"}}>Build this portfolio on Willow Wealth</div></div>
@@ -618,6 +640,7 @@ export default function App() {
   const [phase, setPhase] = useState("intro");
   const [alloc, setAlloc] = useState({pe:0, re:0, pc:0, vc:0});
   const gsRef = useRef(null);
+  const stateHistoryRef = useRef([]);
   const [gs, setGs] = useState(null);
   const [decision, setDecision] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -625,6 +648,7 @@ export default function App() {
   const [expandedAsset, setExpandedAsset] = useState(null);
   const [transitions, setTransitions] = useState(null);
   const [showLog, setShowLog] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState(null);
 
   const totalAlloc = Object.values(alloc).reduce((a,b)=>a+b,0);
   const over = totalAlloc > 500000;
@@ -650,9 +674,26 @@ export default function App() {
       subscriptionFunded:null, firstSatellite:null, earlyExitSold:null, incomeReinvested:null, premiumExit:false, satelliteDeployed:0 };
     runAdvance(init);
   }
-  function handleChoice(opt) { if(opt.disabled) return; runAdvance(opt.apply(gsRef.current)); }
-  function resetAll() { setPhase("intro"); setAlloc({pe:0,re:0,pc:0,vc:0}); gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setShowConfirm(false); setExpandedAsset(null); setTransitions(null); }
-  function rerunSim() { gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setTransitions(null); startGame(); }
+  function handleChoice(opt) {
+    if(opt.disabled) return;
+    stateHistoryRef.current = [...stateHistoryRef.current, JSON.parse(JSON.stringify(gsRef.current))];
+    runAdvance(opt.apply(gsRef.current));
+  }
+  function undoChoice() {
+    const stack = stateHistoryRef.current;
+    if (stack.length === 0) return;
+    const prev = stack[stack.length - 1];
+    stateHistoryRef.current = stack.slice(0, -1);
+    gsRef.current = prev;
+    setGs(prev);
+    const d = buildDecision(prev);
+    setDecision(d);
+    setSummary(d ? { year: prev.year, env: prev.envs[prev.year - 1], totalPortfolio: totalPortfolio(prev), prevTotal: prev.history[prev.history.length - 2]?.totalPortfolio || 500000 } : null);
+    setTransitions(null);
+    setPhase("play");
+  }
+  function resetAll() { setPhase("intro"); setAlloc({pe:0,re:0,pc:0,vc:0}); gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setShowConfirm(false); setExpandedAsset(null); setTransitions(null); setSelectedPreset(null); stateHistoryRef.current=[]; }
+  function rerunSim() { gsRef.current=null; setGs(null); setDecision(null); setSummary(null); setTransitions(null); stateHistoryRef.current=[]; startGame(); }
 
   const results = phase==="results"&&gs ? calcResults(gs.history) : null;
 
@@ -662,13 +703,52 @@ export default function App() {
       <div style={{background:B.darkTeal,padding:"56px 28px",textAlign:"center"}}>
         <h1 style={{color:B.white,fontSize:34,fontWeight:500,margin:"0 0 10px",lineHeight:1.2}}>Portfolio Architect</h1>
         <p style={{color:B.ltTeal,fontSize:15,maxWidth:460,margin:"0 auto 28px",lineHeight:1.6}}>Build a $500K private markets portfolio. Allocate across asset classes, navigate a decade of market conditions, and see how your decisions shape the outcome.</p>
-        <Btn primary onClick={()=>setPhase("allocate")} style={{padding:"16px 52px",fontSize:16,borderRadius:8,boxShadow:"0 2px 12px rgba(0,0,0,.25)",letterSpacing:".04em"}}>Begin</Btn>
+        <Btn primary onClick={()=>setPhase("preset")} style={{padding:"16px 52px",fontSize:16,borderRadius:8,boxShadow:"0 2px 12px rgba(0,0,0,.25)",letterSpacing:".04em"}}>Begin</Btn>
       </div>
       <div style={{maxWidth:540,margin:"0 auto",padding:"36px 24px"}}>
         {[{n:"01",t:"Allocate",d:"Spread your capital across four private markets asset classes. Any amount you leave unallocated is held as a cash reserve."},{n:"02",t:"Decide",d:"During the simulation, opportunities and obligations appear: fund subscriptions, direct investments, concentration warnings, secondary market offers, and liquidity crunches. Each choice reshapes your portfolio."},{n:"03",t:"Review",d:"After ten simulated years, see how your portfolio performed, what your decisions cost or gained you, and how results map to a real investment framework."}].map(s=>(
           <div key={s.n} style={{display:"flex",gap:14,marginBottom:20}}><div style={{fontWeight:600,fontSize:13,color:B.teal,minWidth:28,paddingTop:1}}>{s.n}</div><div><div style={{fontWeight:600,color:B.darkTeal,fontSize:14,marginBottom:3}}>{s.t}</div><div style={{color:B.body,fontSize:13,lineHeight:1.55}}>{s.d}</div></div></div>
         ))}
-        <div style={{marginTop:24,padding:14,background:B.cream,borderRadius:8,fontSize:11,color:B.muted,lineHeight:1.5}}>Simulated performance for educational purposes only. Not indicative of actual results or future returns. All investments involve risk, including loss of principal.</div>
+        <div style={{marginTop:24,fontSize:11,color:B.muted,lineHeight:1.5}}>
+          <div>Simulated performance for educational purposes only. Past performance, real or simulated, does not guarantee future results. All investments involve risk, including possible loss of principal.</div>
+          <div style={{borderTop:`1px solid ${B.ltTeal}`,marginTop:10,paddingTop:10,fontSize:10,color:B.muted,opacity:0.7}}>Simulation parameters derived from the Preqin Private Capital Quarterly Index and Preqin Benchmarks fund-level performance data. Does not represent any specific investment product, fund, or strategy. Does not account for fees, expenses, or taxes.</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── PRESET SELECTION ── */
+  if(phase==="preset") return(
+    <div style={{fontFamily:font,background:B.white,minHeight:"100vh"}}>
+      <div style={{background:B.darkTeal,padding:"36px 28px",textAlign:"center"}}>
+        <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".18em",color:B.lime,marginBottom:6}}>STEP 1</div>
+        <div style={{color:B.white,fontSize:22,fontWeight:500,marginBottom:4}}>Choose a Starting Strategy</div>
+        <div style={{color:B.ltTeal,fontSize:14,maxWidth:420,margin:"0 auto",lineHeight:1.5}}>Pick a preset to start from, or build a custom allocation from scratch.</div>
+      </div>
+      <div style={{maxWidth:560,margin:"0 auto",padding:"28px 24px"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {PRESETS.map(p=>{
+            const total=Object.values(p.alloc).reduce((a,b)=>a+b,0);
+            return(<div key={p.id} onClick={()=>{setAlloc({...p.alloc});setSelectedPreset(p.id);setPhase("allocate");}} style={{background:B.cream,borderRadius:10,padding:"20px 22px",cursor:"pointer",border:`2px solid transparent`,transition:"all .15s"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:16,fontWeight:600,color:B.darkTeal}}>{p.label}</div>
+                <div style={{fontSize:12,color:B.muted}}>{fmt(p.cash)} cash reserve</div>
+              </div>
+              <div style={{fontSize:13,color:B.body,lineHeight:1.5,marginBottom:12}}>{p.desc}</div>
+              <div style={{display:"flex",borderRadius:4,overflow:"hidden",height:6,marginBottom:8}}>
+                {CLASSES.map(c=>{const pct=(p.alloc[c.id]||0)/500000*100;return pct>0?<div key={c.id} style={{width:`${pct}%`,background:c.color,transition:"width .3s"}}/>:null;})}
+                {p.cash>0&&<div style={{width:`${p.cash/500000*100}%`,background:B.muted,opacity:0.3}}/>}
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{CLASSES.map(c=>{const amt=p.alloc[c.id];return amt>0?<div key={c.id} style={{fontSize:11,color:B.body}}><span style={{fontWeight:600,color:c.color}}>{c.short}</span> {fmt(amt)}</div>:null;})}</div>
+            </div>);
+          })}
+        </div>
+        <div style={{textAlign:"center",marginTop:20}}>
+          <span style={{fontSize:13,color:B.teal,cursor:"pointer",fontWeight:500}} onClick={()=>{setAlloc({pe:0,re:0,pc:0,vc:0});setSelectedPreset(null);setPhase("allocate");}}>Build Custom Allocation</span>
+        </div>
+        <div style={{textAlign:"center",marginTop:16}}>
+          <span style={{fontSize:12,color:B.muted,cursor:"pointer"}} onClick={()=>setPhase("intro")}>{"\u2190"} Back</span>
+        </div>
       </div>
     </div>
   );
@@ -684,6 +764,12 @@ export default function App() {
       </div>
       <div style={{maxWidth:560,margin:"0 auto",padding:"28px 24px"}}>
         <PieChart alloc={alloc} reserve={reserve}/>
+        {selectedPreset && (() => { const sp = PRESETS.find(p => p.id === selectedPreset); return sp ? (
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:B.ltTeal,borderRadius:8,padding:"10px 14px",fontSize:12,color:B.teal,marginBottom:10,lineHeight:1.5}}>
+            <span>Starting from: <strong>{sp.label}</strong> preset</span>
+            <span style={{cursor:"pointer",fontWeight:500,fontSize:11}} onClick={()=>setAlloc({...sp.alloc})}>Reset to preset</span>
+          </div>
+        ) : null; })()}
         <div style={{background:B.ltTeal,borderRadius:8,padding:"10px 14px",fontSize:12,color:B.teal,marginBottom:16,lineHeight:1.5}}>Your capital enters through diversified funds managed by institutional managers. During the simulation, you will have opportunities to move capital into direct investments.</div>
         {CLASSES.map(a=>{
           const p=((alloc[a.id]/500000)*100).toFixed(0); const isOpen=expandedAsset===a.id;
@@ -697,16 +783,18 @@ export default function App() {
             {isOpen&&<AssetDetail cls={a}/>}
           </div>);
         })}
-        {reserve===0&&(<div style={{background:"#fdf0ed",borderRadius:8,padding:"12px 16px",fontSize:13,color:B.red,marginBottom:12,lineHeight:1.5}}>You have no cash reserve. During the simulation, capital calls and new investments require available cash. With nothing held back, you may be forced to sell positions at a discount when obligations come due.</div>)}
-        {reserve>0&&reserve<500000&&(<div style={{background:B.cream,borderRadius:8,padding:"12px 16px",fontSize:13,color:B.body,marginBottom:12,lineHeight:1.5}}>{fmt(reserve)} held as cash reserve. Cash earns no return, but it is the only capital available when commitments come due or opportunities appear.</div>)}
+        {reserve===0&&totalAlloc>0&&(<div style={{background:"#fdf0ed",borderRadius:8,padding:"12px 16px",fontSize:13,color:B.red,marginBottom:12,lineHeight:1.5}}>You have no cash reserve. During the simulation, capital calls and new investments require available cash. With nothing held back, you may be forced to sell positions at a discount when obligations come due.</div>)}
+        {reserve>0&&reserve<50000&&(<div style={{background:"#fef6ed",borderRadius:8,padding:"12px 16px",fontSize:13,color:B.warn,marginBottom:12,lineHeight:1.5}}>In private markets, fund managers issue capital calls on a set schedule — and missing one can mean forfeiting your position. Most institutional allocators hold 10–20% in reserve. Your current reserve of {fmt(reserve)} may be tight if multiple calls arrive in the same period.</div>)}
+        {reserve>=50000&&reserve<100000&&(<div style={{background:B.cream,borderRadius:8,padding:"12px 16px",fontSize:13,color:B.body,marginBottom:12,lineHeight:1.5}}>{fmt(reserve)} held as cash reserve. Cash earns no return, but it is the only capital available when commitments come due or opportunities appear.</div>)}
+        {reserve>=100000&&reserve<500000&&(<div style={{background:B.cream,borderRadius:8,padding:"12px 16px",fontSize:13,color:B.body,marginBottom:12,lineHeight:1.5}}>A larger cash reserve means fewer forced sales when capital calls arrive, but cash earns no return in this simulation. Experienced allocators balance liquidity against opportunity cost. {fmt(reserve)} held in reserve.</div>)}
         {over&&<div style={{background:"#fdf0ed",borderRadius:8,padding:"12px 16px",fontSize:13,color:B.red,marginBottom:12}}>Over budget by {fmt(totalAlloc-500000)}. Reduce allocations.</div>}
-        <div style={{display:"flex",gap:10,marginTop:20}}><Btn onClick={()=>{setShowConfirm(false);setPhase("intro");}}>Back</Btn><Btn primary disabled={over||totalAlloc===0} onClick={()=>setShowConfirm(true)} style={{flex:1}}>Run Simulation</Btn></div>
+        <div style={{display:"flex",gap:10,marginTop:20}}><Btn onClick={()=>{setShowConfirm(false);setPhase("preset");}}>Back</Btn><Btn primary disabled={over||totalAlloc===0} onClick={()=>setShowConfirm(true)} style={{flex:1}}>Run Simulation</Btn></div>
         {showConfirm&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,46,48,.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}}>
           <div style={{background:B.cream,borderRadius:12,padding:"32px 28px",maxWidth:440,width:"100%",boxShadow:"0 8px 32px rgba(0,0,0,.2)"}}>
             <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".18em",color:B.teal,marginBottom:6}}>PORTFOLIO REVIEW</div>
             <div style={{fontSize:17,fontWeight:500,color:B.darkTeal,marginBottom:18,lineHeight:1.3}}>Confirm your allocation before the simulation begins.</div>
             <div style={{marginBottom:16}}>{CLASSES.map(c=>{const amt=alloc[c.id];if(amt<=0)return null;return(<div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${B.ltTeal}`}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:8,height:8,borderRadius:2,background:c.color,display:"inline-block"}}/><span style={{fontSize:13,fontWeight:500,color:B.darkTeal}}>{c.name}</span></div><div><span style={{fontSize:13,fontWeight:600,color:B.teal}}>{fmt(amt)}</span><span style={{fontSize:11,color:B.muted,marginLeft:6}}>{((amt/500000)*100).toFixed(0)}%</span></div></div>);})}</div>
-            <div style={{background:B.white,borderRadius:8,padding:"12px 14px",marginBottom:20}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted}}>Cash Reserve</div><div style={{fontSize:18,fontWeight:500,color:reserve>0?B.teal:B.red,marginTop:2}}>{fmt(Math.max(0,reserve))}</div></div><div style={{fontSize:11,color:B.muted,maxWidth:200,textAlign:"right",lineHeight:1.4}}>{reserve>0?"Available for new investments and obligations during the simulation. Earns no return.":"No cash reserve. You may be forced to liquidate positions at a discount when obligations come due."}</div></div></div>
+            <div style={{background:B.white,borderRadius:8,padding:"12px 14px",marginBottom:20}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:B.muted}}>Cash Reserve</div><div style={{fontSize:18,fontWeight:500,color:reserve>0?B.teal:B.red,marginTop:2}}>{fmt(Math.max(0,reserve))}</div></div><div style={{fontSize:11,color:reserve===0?B.red:reserve<50000?B.warn:B.muted,maxWidth:200,textAlign:"right",lineHeight:1.4}}>{reserve===0?"Expect forced liquidations.":reserve<50000?"Tight — capital calls may force secondary sales.":"Adequate buffer for most scenarios."}</div></div></div>
             <div style={{display:"flex",gap:10}}><Btn onClick={()=>setShowConfirm(false)} style={{flex:1}}>Go Back</Btn><Btn primary onClick={()=>{setShowConfirm(false);startGame();}} style={{flex:1}}>Confirm and Start</Btn></div>
           </div>
         </div>)}
@@ -720,11 +808,33 @@ export default function App() {
     const yearChg=summary?((summary.totalPortfolio-summary.prevTotal)/summary.prevTotal*100):0;
     return(<div style={{fontFamily:font,background:B.white,minHeight:"100vh"}}>
       {transitions&&transitions.length>0&&<YearTransition transitions={transitions} onComplete={onTransitionComplete}/>}
-      <div style={{background:B.darkTeal,padding:"20px 28px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}><div><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".18em",color:B.lime}}>YEAR {gs.year} OF 10</div><div style={{color:B.white,fontSize:18,fontWeight:500,marginTop:2}}>Decision Required</div></div><div style={{textAlign:"right"}}><div style={{fontSize:22,fontWeight:500,color:B.lime}}>{fmt(tp)}</div><div style={{fontSize:12,color:changeTot>=0?B.mint:"#ff9f9f"}}>{pctFmt(changeTot)} total</div></div></div><div style={{marginTop:14,height:4,background:"rgba(255,255,255,.12)",borderRadius:2}}><div style={{height:"100%",width:`${(gs.year/10)*100}%`,background:B.lime,borderRadius:2,transition:"width .3s"}}/></div></div>
+      <style>{`.play-hdr-left:hover .play-back{opacity:1;margin-right:8px;max-width:60px}.play-back{opacity:0;max-width:0;overflow:hidden;transition:opacity .2s,max-width .25s,margin .25s;margin-right:0;cursor:pointer;white-space:nowrap}`}</style>
+      <div style={{background:B.darkTeal,padding:"22px 28px 18px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
+          <div className="play-hdr-left" style={{cursor:stateHistoryRef.current.length>0?"default":undefined}}>
+            <div style={{display:"flex",alignItems:"center",marginBottom:4}}>
+              {stateHistoryRef.current.length>0&&<span className="play-back" onClick={undoChoice} style={{color:B.ltTeal,fontSize:11,fontWeight:500}}>{"\u2190"} Back</span>}
+              <span style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:".2em",color:B.lime}}>YEAR {gs.year} OF 10</span>
+            </div>
+            <div style={{color:B.white,fontSize:20,fontWeight:500}}>Decision Required</div>
+          </div>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{fontSize:24,fontWeight:500,color:B.lime,lineHeight:1}}>{fmt(tp)}</div>
+            <div style={{fontSize:12,color:changeTot>=0?B.mint:"#ff9f9f",marginTop:3}}>{pctFmt(changeTot)} total</div>
+          </div>
+        </div>
+        <div style={{marginTop:14,height:4,background:"rgba(255,255,255,.12)",borderRadius:2}}><div style={{height:"100%",width:`${(gs.year/10)*100}%`,background:B.lime,borderRadius:2,transition:"width .3s"}}/></div>
+      </div>
       <div style={{maxWidth:600,margin:"0 auto",padding:"24px 24px"}}>
-        {gs.history.length>1&&<Chart history={gs.history}/>}
+        {gs.history.length>1&&<Chart history={gs.history} decisions={gs.decisions}/>}
         {summary&&(<div style={{display:"flex",gap:10,flexWrap:"wrap",margin:"16px 0"}}><Stat label="Portfolio" value={fmt(summary.totalPortfolio)}/><Stat label="This Period" value={pctFmt(yearChg)} color={yearChg>=0?B.green:B.red}/><Stat label="Cash Reserve" value={fmt(gs.cash)} sub={gs.cash<30000?"Low":"Available"} color={gs.cash<30000?B.warn:B.teal}/></div>)}
         <IncomeTracker gs={gs}/>
+        {gs.concentrationPenalty && (() => { const penCls = CLASSES.find(c => c.id === gs.concentrationPenalty); return penCls ? (
+          <div style={{background:"#fdf0ed",borderRadius:8,padding:"10px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{width:8,height:8,borderRadius:2,background:penCls.color,display:"inline-block",flexShrink:0}}/>
+            <span style={{fontSize:12,color:B.red,fontWeight:500}}>Concentration drag active on {penCls.name} satellite position ({"\u2212"}8%/yr)</span>
+          </div>
+        ) : null; })()}
         {summary&&summary.env&&<EnvExplainer env={summary.env}/>}
         {gs.history.filter(h=>h.env).length>1&&(<div style={{marginBottom:16}}><div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:6}}>Market History</div><div style={{display:"flex",flexWrap:"wrap"}}>{gs.history.filter(h=>h.env).map((h,i)=><EventTag key={i} env={h.env}/>)}</div></div>)}
         {decision&&(<div style={{background:B.cream,borderRadius:10,padding:"24px 24px",marginBottom:20}}>
@@ -771,7 +881,7 @@ export default function App() {
           <Stat label="Worst Year" value={`${results.worstYear}%`} sub={parseFloat(results.worstYear)>=0?"Smallest gain":"Largest single-year decline"} color={parseFloat(results.worstYear)<-10?B.red:parseFloat(results.worstYear)<0?B.warn:B.teal}/>
           <Stat label="Total Income" value={fmt(cumIncome)} sub="From credit and real estate" color={B.teal}/>
         </div>
-        <Chart history={gs.history}/>
+        <Chart history={gs.history} decisions={gs.decisions}/>
         <div style={{margin:"20px 0",background:B.cream,borderRadius:8,padding:"18px 20px"}}>
           <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.muted,marginBottom:12}}>Returns Attribution</div>
           {classContrib.map(({cls,start,end,contrib})=>{const pct=totalGain!==0?Math.round((contrib/totalGain)*100):0;const barW=Math.round((Math.abs(contrib)/maxContrib)*100);return(
@@ -809,10 +919,32 @@ export default function App() {
             <div style={{padding:"8px 0 8px 8px",textAlign:"right",color:B.muted}}>{"\u2014"}</div>
           </div>
         </div>
-        <FrameworkReveal positions={gs.positions} cash={gs.cash}/>
+        {gs.concentrationPenalty && (() => {
+          const penCls = CLASSES.find(c => c.id === gs.concentrationPenalty);
+          if (!penCls) return null;
+          const satKey = penCls.id + "_sat";
+          const actualValue = gs.positions[satKey] || 0;
+          /* Find the year concentration was accepted (Y6) and compute years of drag */
+          const concYear = 6;
+          const yearsOfDrag = Math.max(0, (gs.history.length - 1) - concYear);
+          const theoretical = yearsOfDrag > 0 ? actualValue / Math.pow(0.92, yearsOfDrag) : actualValue;
+          const dragCost = Math.round(theoretical - actualValue);
+          return dragCost > 0 ? (
+            <div style={{margin:"20px 0",background:"#fdf0ed",borderRadius:8,padding:"18px 20px"}}>
+              <div style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:B.red,marginBottom:8}}>Concentration Impact</div>
+              <div style={{fontSize:13,color:B.body,lineHeight:1.6}}>
+                You accepted concentration in {penCls.name} at Year 6. The 8% annual performance drag compounded over {yearsOfDrag} year{yearsOfDrag!==1?"s":""}, reducing your {penCls.name} satellite position by an estimated <span style={{fontWeight:600,color:B.red}}>{"\u2212"}{fmt(dragCost)}</span>.
+              </div>
+            </div>
+          ) : null;
+        })()}
+        <FrameworkReveal positions={gs.positions} cash={gs.cash} concentrationPenalty={gs.concentrationPenalty}/>
         <div style={{display:"flex",gap:10}}><Btn primary onClick={rerunSim} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}><span>Rerun Simulation</span><span style={{fontSize:11,fontWeight:400,opacity:.7,marginTop:2}}>Same allocation, different markets</span></Btn><Btn onClick={resetAll} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}><span>Start Over</span><span style={{fontSize:11,fontWeight:400,opacity:.7,marginTop:2}}>Choose a new allocation</span></Btn></div>
         {gs.decisions.length>0&&(<div style={{marginTop:20}}><div style={{fontSize:11,color:B.teal,cursor:"pointer",fontWeight:500}} onClick={()=>setShowLog(!showLog)}>{showLog?"Hide decision log":"View decision log"}</div>{showLog&&(<div style={{marginTop:8,background:B.cream,borderRadius:8,padding:"12px 16px"}}>{gs.decisions.map((d,i)=>(<div key={i} style={{fontSize:12,color:B.body,padding:"4px 0",borderBottom:i<gs.decisions.length-1?`1px solid ${B.ltTeal}`:"none"}}>{d}</div>))}</div>)}</div>)}
-        <div style={{marginTop:28,padding:14,background:B.cream,borderRadius:8,fontSize:11,color:B.muted,lineHeight:1.5}}>Simulated performance for educational purposes only. Not indicative of actual results or future returns. Past performance, real or simulated, does not guarantee future results. All investments involve risk, including possible loss of principal.</div>
+        <div style={{marginTop:28,fontSize:11,color:B.muted,lineHeight:1.5}}>
+          <div>Simulated performance for educational purposes only. Past performance, real or simulated, does not guarantee future results. All investments involve risk, including possible loss of principal.</div>
+          <div style={{borderTop:`1px solid ${B.ltTeal}`,marginTop:10,paddingTop:10,fontSize:10,color:B.muted,opacity:0.7}}>Simulation parameters derived from the Preqin Private Capital Quarterly Index and Preqin Benchmarks fund-level performance data. Does not represent any specific investment product, fund, or strategy. Does not account for fees, expenses, or taxes.</div>
+        </div>
       </div>
     </div>);
   }
