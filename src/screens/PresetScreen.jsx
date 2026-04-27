@@ -2,13 +2,15 @@ import { W, CLASSES, font, fmt } from "../tokens.js";
 import { Eyebrow, Pill, Rule } from "../components/Primitives.jsx";
 import { PRESETS } from "../engine/presets.js";
 
+const BASE = import.meta.env.BASE_URL;
+
 const PRESET_META = [
   {
     id: "income",
     code: "P-01",
     target: "6–8%",
     drawdown: "−9%",
-    photo: "/assets/photo-architecture-curves.jpg",
+    photo: `${BASE}assets/photo-architecture-curves.jpg`,
     featured: false,
     notes: "Built for investors prioritizing distributions. Private Credit and Real Estate generate regular yield.",
   },
@@ -17,7 +19,7 @@ const PRESET_META = [
     code: "P-02",
     target: "8–11%",
     drawdown: "−18%",
-    photo: "/assets/photo-infrastructure-dam.jpg",
+    photo: `${BASE}assets/photo-infrastructure-dam.jpg`,
     featured: true,
     notes: "Our most-selected preset. Balanced exposure across all four asset classes for steady compounding.",
   },
@@ -26,7 +28,7 @@ const PRESET_META = [
     code: "P-03",
     target: "11–15%",
     drawdown: "−28%",
-    photo: "/assets/photo-architecture-glass.jpg",
+    photo: `${BASE}assets/photo-architecture-glass.jpg`,
     featured: false,
     notes: "Designed for long-horizon compounders. Heavy PE and VC allocation with tolerance for J-curve drawdowns.",
   },

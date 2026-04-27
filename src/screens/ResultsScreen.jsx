@@ -91,7 +91,7 @@ export function ResultsScreen({ gs, onRestart }) {
       }}>
         <div style={{
           position: "absolute", inset: 0,
-          backgroundImage: "url(/assets/gradient-teal.png)",
+          backgroundImage: `url(${import.meta.env.BASE_URL}assets/gradient-teal.png)`,
           backgroundSize: "cover", backgroundPosition: "center",
         }} />
         <div style={{

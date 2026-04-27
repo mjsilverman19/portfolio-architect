@@ -69,7 +69,7 @@ export function PlayScreen({ gs, decision, summary, onChoose, onSkip }) {
       {/* Full-bleed dam photo */}
       <div style={{
         position: "absolute", inset: 0,
-        backgroundImage: "url(/assets/photo-infrastructure-dam.jpg)",
+        backgroundImage: `url(${import.meta.env.BASE_URL}assets/photo-infrastructure-dam.jpg)`,
         backgroundSize: "cover", backgroundPosition: "center 30%",
       }} />
       <div style={{

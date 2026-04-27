@@ -37,7 +37,7 @@ export function FrameworkReveal({ positions, cash, concentrationPenalty }) {
       {/* Right-side imagery */}
       <div style={{
         position: "absolute", right: 0, top: 0, bottom: 0, width: 400,
-        backgroundImage: "url(/assets/photo-investor-phone.jpg)",
+        backgroundImage: `url(${import.meta.env.BASE_URL}assets/photo-investor-phone.jpg)`,
         backgroundSize: "cover", backgroundPosition: "center",
         opacity: 0.7,
       }} />

@@ -36,7 +36,7 @@ export function IntroScreen({ onStart }) {
       {/* Full-bleed photo */}
       <div style={{
         position: "absolute", inset: 0,
-        backgroundImage: "url(/assets/photo-architecture-glass.jpg)",
+        backgroundImage: `url(${import.meta.env.BASE_URL}assets/photo-architecture-glass.jpg)`,
         backgroundSize: "cover", backgroundPosition: "center",
       }} />
       <div style={{
